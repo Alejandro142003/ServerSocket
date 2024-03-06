@@ -10,7 +10,6 @@ import java.net.Socket;
 
 @AllArgsConstructor
 public class GesConect extends Thread {
-    private final DAO dao;
     private final Socket socket;
 
     public void run() {
