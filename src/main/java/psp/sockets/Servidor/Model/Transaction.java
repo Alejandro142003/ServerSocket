@@ -21,8 +21,8 @@ public class Transaction {
     private UUID id;
 
     @Column(name = "type", nullable = false)
-
     private String type;
+
     @Column(name = "amount", nullable = false)
     private float amount;
 
