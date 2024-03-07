@@ -2,12 +2,13 @@ package psp.sockets.Servidor.DAO.Services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import psp.sockets.Servidor.DAO.Respositories.TransactionRepository;
 import psp.sockets.Servidor.Model.Transaction;
 
 @Service
 public class TransactionService {
     @Autowired
-    TransactionService transactionService;
+    TransactionRepository transactionRepository;
 
     Transaction save(Transaction transaction) {
         try{
@@ -21,7 +22,7 @@ public class TransactionService {
                  .accountDestiny(transaction.getAccountDestiny())
                  .build();
 
-         return transactionService.save(result);
+         return transactionRepository.save(result);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

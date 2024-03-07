@@ -9,7 +9,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @Getter
 @Setter
-public class Credenciales implements Serializable {
-    private String usuario;
+public class Credentials implements Serializable {
+    private String name;
     private String contraseña;
 }

@@ -1,28 +1,31 @@
 package psp.sockets.Servidor;
 
 import lombok.AllArgsConstructor;
-import psp.sockets.Servidor.Model.Credenciales;
+import psp.sockets.Servidor.DAO.Services.CredentialsService;
+import psp.sockets.Servidor.Model.Credentials;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 @AllArgsConstructor
 public class GesConect extends Thread {
-    private final Socket socket;
 
     public void run() {
         try (
+                ServerSocket serverSocket = new ServerSocket(12345); // Escuchar en el puerto 12345
+                Socket socket = serverSocket.accept(); // Aceptar conexiones entrantes
                 ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
                 ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream())
         ) {
             // Leer credenciales del cliente
-            Credenciales credenciales = (Credenciales) inputStream.readObject();
+            Credentials credentials = (Credentials) inputStream.readObject();
 
             // Procesar y verificar las credenciales
             String respuesta;
-            if (verificarCredenciales(credenciales)) {
+            if (verificarCredenciales(credentials)) {
                 respuesta = "Inicio de sesión exitoso";
             } else {
                 respuesta = "Inicio de sesión fallido";
@@ -32,25 +35,14 @@ public class GesConect extends Thread {
             outputStream.writeUTF(respuesta);
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                // Cerrar la conexión con el cliente
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
     }
 
-    private boolean verificarCredenciales(Credenciales credenciales) {
+    private boolean verificarCredenciales(Credentials credentials) {
         // Verificar las credenciales
-        if(credenciales == null || credenciales.getUsuario() == null || credenciales.getContraseña() == null) {
+        if(credentials == null || credentials.getName() == null || credentials.getContraseña() == null) {
             return false;
-        } else {
-            dao.verificarCredenciales(credenciales);
         }
-
-
-        return credenciales.getUsuario().equals("usuario") && credenciales.getContraseña().equals("hashContraseña");
+        return CredentialsService.verificarCredenciales(credentials);
     }
 }
