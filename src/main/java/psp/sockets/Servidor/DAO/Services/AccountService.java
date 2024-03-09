@@ -34,6 +34,10 @@ public class AccountService {
         return accountRepository.save(account);
     }
 
+    public List<Account> getAccountsByUserId(UUID id){
+        return accountRepository.findByUserId(id);
+    }
+
     public void deleteAccount(UUID id) {
         accountRepository.deleteById(id);
     }

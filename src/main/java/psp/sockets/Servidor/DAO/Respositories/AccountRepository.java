@@ -6,10 +6,13 @@ import org.springframework.stereotype.Repository;
 import psp.sockets.Servidor.Model.Account;
 import psp.sockets.Servidor.Model.User;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, UUID> {
     Optional<Account> findByAcountNumber(int acountNumber);
+
+    List<Account> findByUserId(UUID id);
 }
