@@ -40,9 +40,12 @@ public class GesConect extends Thread {
             User user = userService.getUserByName(credentials.getName()).orElse(null);
             if (user == null || !user.getPassword().equals(credentials.getPassword())) {
                 // Enviar mensaje de error al cliente si la autenticación falla
-                outputStream.writeObject("Autenticación fallida");
+                outputStream.writeObject(null);
                 return;
             }
+
+            // Obtener el ID del usuario autenticado
+            UUID userId = user.getId();
 
             // Autenticación exitosa, enviar mensaje de éxito al cliente
             outputStream.writeObject("Inicio de sesión exitoso");
@@ -51,53 +54,95 @@ public class GesConect extends Thread {
 
             System.out.println(user.getRole());
 
-            int userOption = inputStream.readInt();
+            Object option = inputStream.readObject();
 
-            if (user.getRole().equals("cajero")) {
-                switch (userOption) {
-                    case 1:
-                        Account gettedAccount = accountService.getAccountByNumber(inputStream.readInt()).get();
-                        outputStream.writeFloat(gettedAccount.getBalance());
-                        break;
-                    case 2:
-                        Account accountTake = accountService.getAccountByNumber(inputStream.readInt()).get();
-                        accountService.take(inputStream.readFloat(), accountTake);
-                        outputStream.writeObject("Retiro exitoso");
-                        break;
-                    case 3:
-                        Account accountDepo = accountService.getAccountByNumber(inputStream.readInt()).get();
-                        accountService.deposit(inputStream.readFloat(), accountDepo);
-                        outputStream.writeObject("Deposito exitoso");
-                        break;
+            if ((int)option == 1){
+                System.out.println("Ver dinero cuenta");
+
+                int accountNumber = (int) inputStream.readObject();
+
+
+                /*Account account =  accountService.getAccountByNumber(accountNumber).get();
+
+                outputStream.writeObject(account.getBalance());*/
+
+                Optional<Account> optionalAccount = accountService.getAccountByNumber(accountNumber);
+                if (optionalAccount.isPresent()) {
+                    Account account = optionalAccount.get();
+                    if (account.getUser().getId().equals(userId)) { // Comprobar el ID del usuario asociado a la cuenta
+                        outputStream.writeObject(account.getBalance());
+                    } else {
+                        outputStream.writeObject("La cuenta no pertenece al usuario actual.");
+                    }
+                } else {
+                    outputStream.writeObject("La cuenta no existe.");
                 }
-            } else if (user.getRole().equals("operario")) {
-                switch (userOption) {
-                    case 1:
-                        User newUser = (User) inputStream.readObject();
-                        userService.saveUser(newUser);
-                        outputStream.writeObject("Usuario creado exitosamente");
-                        break;
-                    case 2:
-                        Account newAccount = (Account) inputStream.readObject();
-                        accountService.saveAccount(newAccount);
-                        outputStream.writeObject("Cuenta creada exitosamente");
-                        break;
-                    case 3:
-                        int numCuenta = inputStream.readInt();
-                        Account account = accountService.getAccountByNumber(numCuenta).get();
-                        outputStream.writeFloat(account.getBalance());
-                        break;
-                    case 4:
-                        User gettedUser = (User) inputStream.readObject();
-                        outputStream.writeObject(userService.getUserByName(gettedUser.getName()).get());
-                        break;
-                    case 5:
-                        Account accountToDelete = (Account) inputStream.readObject();
-                        accountService.deleteAccount(accountToDelete.getId());
-                        outputStream.writeObject("Cuenta eliminada exitosamente");
-                        break;
+
+            } else if ((int)option == 2) {
+                System.out.println("Sacar dinero");
+
+                int accountNumber = (int) inputStream.readObject();
+                int money = (int) inputStream.readObject();
+
+                try {
+                    Optional<Account> optionalAccount = accountService.getAccountByNumber(accountNumber);
+                    if (optionalAccount.isPresent()) {
+                        Account account = optionalAccount.get();
+                        if (account.getUser().getId().equals(userId)) { // Comprobar el ID del usuario asociado a la cuenta
+                            float balance = account.getBalance();
+                            if (balance >= money) {
+                                // Suficiente saldo para realizar la transacción
+                                balance -= money;
+                                account.setBalance(balance);
+                                accountService.saveAccount(account); // Guardar los cambios en la cuenta
+                                outputStream.writeObject("Transacción exitosa. Nuevo saldo: " + balance);
+                            } else {
+                                // Saldo insuficiente
+                                outputStream.writeObject("Saldo insuficiente para realizar la transacción.");
+                            }
+                        } else {
+                            outputStream.writeObject("La cuenta no pertenece al usuario actual.");
+                        }
+                    } else {
+                        // La cuenta no existe
+                        outputStream.writeObject("La cuenta no existe.");
+                    }
+                } catch (Exception e) {
+                    // Manejar cualquier excepción que pueda ocurrir durante la operación
+                    outputStream.writeObject("Error al procesar la transacción: " + e.getMessage());
+                }
+            } else if ((int)option == 3) {
+                System.out.println("Ingresar dinero");
+
+                int accountNumber = (int) inputStream.readObject();
+                int money = (int) inputStream.readObject();
+
+                try {
+                    Optional<Account> optionalAccount = accountService.getAccountByNumber(accountNumber);
+                    if (optionalAccount.isPresent()) {
+                        Account account = optionalAccount.get();
+                        if (account.getUser().getId().equals(userId)) { // Comprobar el ID del usuario asociado a la cuenta
+                            float balance = account.getBalance();
+
+                            // Actualizar el saldo de la cuenta
+                            balance += money;
+                            account.setBalance(balance);
+                            accountService.saveAccount(account); // Guardar los cambios en la cuenta
+
+                            outputStream.writeObject("Depósito exitoso. Nuevo saldo: " + balance);
+                        } else {
+                            outputStream.writeObject("La cuenta no pertenece al usuario actual.");
+                        }
+                    } else {
+                        // La cuenta no existe
+                        outputStream.writeObject("La cuenta no existe.");
+                    }
+                } catch (Exception e) {
+                    // Manejar cualquier excepción que pueda ocurrir durante la operación
+                    outputStream.writeObject("Error al procesar el depósito: " + e.getMessage());
                 }
             }
+
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         } finally {
