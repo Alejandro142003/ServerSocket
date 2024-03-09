@@ -5,27 +5,33 @@ import org.springframework.stereotype.Service;
 import psp.sockets.Servidor.DAO.Respositories.TransactionRepository;
 import psp.sockets.Servidor.Model.Transaction;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
 public class TransactionService {
+
+    private final TransactionRepository transactionRepository;
+
     @Autowired
-    TransactionRepository transactionRepository;
-
-    Transaction save(Transaction transaction) {
-        try{
-         if (transaction == null) throw new RuntimeException("Transaction is null");
-
-         Transaction result = Transaction.builder()
-                 .type(transaction.getType())
-                 .amount(transaction.getAmount())
-                 .date(transaction.getDate())
-                 .account(transaction.getAccount())
-                 .accountDestiny(transaction.getAccountDestiny())
-                 .build();
-
-         return transactionRepository.save(result);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public TransactionService(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
     }
 
+    public List<Transaction> getAllTransactions() {
+        return transactionRepository.findAll();
+    }
+
+    public Optional<Transaction> getTransactionById(UUID id) {
+        return transactionRepository.findById(id);
+    }
+
+    public Transaction saveTransaction(Transaction transaction) {
+        return transactionRepository.save(transaction);
+    }
+
+    public void deleteTransaction(UUID id) {
+        transactionRepository.deleteById(id);
+    }
 }

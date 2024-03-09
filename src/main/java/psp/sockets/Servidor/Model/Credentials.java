@@ -11,5 +11,5 @@ import java.io.Serializable;
 @Setter
 public class Credentials implements Serializable {
     private String name;
-    private String contraseña;
+    private String password;
 }

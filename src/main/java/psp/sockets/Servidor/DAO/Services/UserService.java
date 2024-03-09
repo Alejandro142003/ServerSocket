@@ -2,39 +2,40 @@ package psp.sockets.Servidor.DAO.Services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import psp.sockets.Servidor.DAO.Respositories.UserRespository;
+import psp.sockets.Servidor.DAO.Respositories.UserRepository;
 import psp.sockets.Servidor.Model.User;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserService {
+
+    private final UserRepository userRepository;
+
     @Autowired
-    UserRespository userRespository;
-
-    public User save(User user){
-        try {
-            if (user == null) throw new RuntimeException("User is null");
-
-            User result = User.builder()
-                    .name(user.getName())
-                    .password(user.getPassword())
-                    .role(user.getRole())
-                    .accounts(user.getAccounts())
-                    .build();
-
-            return userRespository.save(result);
-        } catch (RuntimeException e) {
-            throw new RuntimeException(e);
-        }
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public User findByName(String name) {
-        try{
-             User result = userRespository.findByName(name)
-                    .orElse(null);
-             return result;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
     }
 
+    public Optional<User> getUserById(UUID id) {
+        return userRepository.findById(id);
+    }
+
+    public Optional<User> getUserByName(String name) {
+        return userRepository.findByName(name);
+    }
+
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+
+    public void deleteUser(UUID id) {
+        userRepository.deleteById(id);
+    }
 }

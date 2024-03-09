@@ -1,48 +1,157 @@
 package psp.sockets.Servidor;
 
-import lombok.AllArgsConstructor;
-import psp.sockets.Servidor.DAO.Services.CredentialsService;
-import psp.sockets.Servidor.Model.Credentials;
-
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
+import java.io.*;
 import java.net.Socket;
+import java.util.Optional;
+import java.util.UUID;
 
-@AllArgsConstructor
+import psp.sockets.Servidor.DAO.Services.AccountService;
+import psp.sockets.Servidor.DAO.Services.TransactionService;
+import psp.sockets.Servidor.DAO.Services.UserService;
+import psp.sockets.Servidor.Model.Account;
+import psp.sockets.Servidor.Model.Credentials;
+import psp.sockets.Servidor.Model.Transaction;
+import psp.sockets.Servidor.Model.User;
+
 public class GesConect extends Thread {
+    private final Socket socket;
+    private final AccountService accountService;
+    private final TransactionService transactionService;
+    private final UserService userService;
 
-    public void run() {
-        try (
-                ServerSocket serverSocket = new ServerSocket(12345); // Escuchar en el puerto 12345
-                Socket socket = serverSocket.accept(); // Aceptar conexiones entrantes
-                ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-                ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream())
-        ) {
-            // Leer credenciales del cliente
-            Credentials credentials = (Credentials) inputStream.readObject();
-
-            // Procesar y verificar las credenciales
-            String respuesta;
-            if (verificarCredenciales(credentials)) {
-                respuesta = "Inicio de sesión exitoso";
-            } else {
-                respuesta = "Inicio de sesión fallido";
-            }
-
-            // Enviar respuesta al cliente
-            outputStream.writeUTF(respuesta);
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+    public GesConect(Socket socket, AccountService accountService, TransactionService transactionService, UserService userService) {
+        this.socket = socket;
+        this.accountService = accountService;
+        this.transactionService = transactionService;
+        this.userService = userService;
     }
 
-    private boolean verificarCredenciales(Credentials credentials) {
-        // Verificar las credenciales
-        if(credentials == null || credentials.getName() == null || credentials.getContraseña() == null) {
-            return false;
+    @Override
+    public void run() {
+        try {
+            // Establecer flujo de entrada y salida
+            ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
+            ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
+
+            // Recibir credenciales del cliente
+            Credentials credentials = (Credentials) inputStream.readObject();
+
+            // Autenticar al usuario
+            User user = userService.getUserByName(credentials.getName()).orElse(null);
+            if (user == null || !user.getPassword().equals(credentials.getPassword())) {
+                // Enviar mensaje de error al cliente si la autenticación falla
+                outputStream.writeObject(null);
+                return;
+            }
+
+            // Obtener el ID del usuario autenticado
+            UUID userId = user.getId();
+
+            // Autenticación exitosa, enviar mensaje de éxito al cliente
+            outputStream.writeObject("Inicio de sesión exitoso");
+
+            outputStream.writeObject(user.getRole());
+
+            System.out.println(user.getRole());
+
+            Object option = inputStream.readObject();
+
+            if ((int)option == 1){
+                System.out.println("Ver dinero cuenta");
+
+                int accountNumber = (int) inputStream.readObject();
+
+
+                /*Account account =  accountService.getAccountByNumber(accountNumber).get();
+
+                outputStream.writeObject(account.getBalance());*/
+
+                Optional<Account> optionalAccount = accountService.getAccountByNumber(accountNumber);
+                if (optionalAccount.isPresent()) {
+                    Account account = optionalAccount.get();
+                    if (account.getUser().getId().equals(userId)) { // Comprobar el ID del usuario asociado a la cuenta
+                        outputStream.writeObject(account.getBalance());
+                    } else {
+                        outputStream.writeObject("La cuenta no pertenece al usuario actual.");
+                    }
+                } else {
+                    outputStream.writeObject("La cuenta no existe.");
+                }
+
+            } else if ((int)option == 2) {
+                System.out.println("Sacar dinero");
+
+                int accountNumber = (int) inputStream.readObject();
+                int money = (int) inputStream.readObject();
+
+                try {
+                    Optional<Account> optionalAccount = accountService.getAccountByNumber(accountNumber);
+                    if (optionalAccount.isPresent()) {
+                        Account account = optionalAccount.get();
+                        if (account.getUser().getId().equals(userId)) { // Comprobar el ID del usuario asociado a la cuenta
+                            float balance = account.getBalance();
+                            if (balance >= money) {
+                                // Suficiente saldo para realizar la transacción
+                                balance -= money;
+                                account.setBalance(balance);
+                                accountService.saveAccount(account); // Guardar los cambios en la cuenta
+                                outputStream.writeObject("Transacción exitosa. Nuevo saldo: " + balance);
+                            } else {
+                                // Saldo insuficiente
+                                outputStream.writeObject("Saldo insuficiente para realizar la transacción.");
+                            }
+                        } else {
+                            outputStream.writeObject("La cuenta no pertenece al usuario actual.");
+                        }
+                    } else {
+                        // La cuenta no existe
+                        outputStream.writeObject("La cuenta no existe.");
+                    }
+                } catch (Exception e) {
+                    // Manejar cualquier excepción que pueda ocurrir durante la operación
+                    outputStream.writeObject("Error al procesar la transacción: " + e.getMessage());
+                }
+            } else if ((int)option == 3) {
+                System.out.println("Ingresar dinero");
+
+                int accountNumber = (int) inputStream.readObject();
+                int money = (int) inputStream.readObject();
+
+                try {
+                    Optional<Account> optionalAccount = accountService.getAccountByNumber(accountNumber);
+                    if (optionalAccount.isPresent()) {
+                        Account account = optionalAccount.get();
+                        if (account.getUser().getId().equals(userId)) { // Comprobar el ID del usuario asociado a la cuenta
+                            float balance = account.getBalance();
+
+                            // Actualizar el saldo de la cuenta
+                            balance += money;
+                            account.setBalance(balance);
+                            accountService.saveAccount(account); // Guardar los cambios en la cuenta
+
+                            outputStream.writeObject("Depósito exitoso. Nuevo saldo: " + balance);
+                        } else {
+                            outputStream.writeObject("La cuenta no pertenece al usuario actual.");
+                        }
+                    } else {
+                        // La cuenta no existe
+                        outputStream.writeObject("La cuenta no existe.");
+                    }
+                } catch (Exception e) {
+                    // Manejar cualquier excepción que pueda ocurrir durante la operación
+                    outputStream.writeObject("Error al procesar el depósito: " + e.getMessage());
+                }
+            }
+
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                // Cerrar el socket al finalizar la conexión
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        return CredentialsService.verificarCredenciales(credentials);
     }
 }
