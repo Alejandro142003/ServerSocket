@@ -37,4 +37,14 @@ public class AccountService {
     public void deleteAccount(UUID id) {
         accountRepository.deleteById(id);
     }
+
+    public void deposit(float amount, Account account){
+        account.setBalance(account.getBalance() + amount);
+        accountRepository.save(account);
+    }
+
+    public void take(float amount, Account account){
+        account.setBalance(account.getBalance() - amount);
+        accountRepository.save(account);
+    }
 }

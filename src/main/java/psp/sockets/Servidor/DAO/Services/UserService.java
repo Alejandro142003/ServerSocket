@@ -2,6 +2,7 @@ package psp.sockets.Servidor.DAO.Services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import psp.sockets.Servidor.DAO.Respositories.AccountRepository;
 import psp.sockets.Servidor.DAO.Respositories.UserRepository;
 import psp.sockets.Servidor.Model.User;
 
@@ -11,11 +12,10 @@ import java.util.UUID;
 
 @Service
 public class UserService {
-
     private final UserRepository userRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, AccountRepository accountRepository) {
         this.userRepository = userRepository;
     }
 
